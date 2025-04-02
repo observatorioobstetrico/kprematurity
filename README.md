@@ -1,6 +1,6 @@
 # A clustering model for monitoring preterm birth in Brazil to guide public health policies: a retrospective observational study
 
-This retrospective observational study analysed socioeconomic profiles, adequacy of antenatal care, and the occurrence of elective and spontaneous preterm births in healthcare units in Brazil in 2020 using using the K-mean clustering method.
+This retrospective observational study analysed socioeconomic profiles, adequacy of antenatal care and the occurrence of elective and spontaneous preterm births in healthcare units in Brazil in 2020 using using the K-mean clustering method.
 
 
 Funding: Bill & Melinda Gates Foundation, CNPq and FAPES.
