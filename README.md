@@ -19,7 +19,7 @@ Data processing, descriptive analysis and K-mean clustering - `02.script/`
 
 ### Results
 
-Tabelas - `03.results/tables/`
+Tables - `03.results/tables/`
 
 Figures - `03.results/figures/`
 
