@@ -17,7 +17,9 @@ SINASC+IBGE+CNES+ATLASBR - `01.data/`
 
 ### Results
 
+Tabelas - `03.results/tables/
 
+Figures - `03.results/figures/
 
 ### Software
 
