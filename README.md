@@ -9,11 +9,13 @@ Funding: Bill & Melinda Gates Foundation, CNPq and FAPES.
 
 ### Data
 
-SINASC+IBGE+CNES+ATLASBR - `01.data/`
+SINASC+IBGE+CNES+ATLASBR (final) - `01.data/`
+
+IBGE - `01.data/`
 
 ### Script
 
-
+Data processing, descriptive analysis and K-mean clustering - `02.script/`
 
 ### Results
 
