@@ -1,0 +1,1154 @@
+---
+title: Análise exploratória para dados de nascidos vivos, de estabelecimentos de saúde e socioeconômicos, por tipo de prematuridade - 14-20
+header-includes:
+  - \renewcommand{\contentsname}{Sumário}
+output: 
+  pdf_document:
+    toc: yes
+    toc_depth: "1"
+    keep_tex: yes
+  word_document: default
+  html_document:
+    self_contained: no
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include = FALSE, echo = TRUE, message = FALSE, warning = FALSE, error = FALSE, results = 'hide', out.width = "70%"}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, error = FALSE)
+```
+
+```{r echo = FALSE, message = FALSE, warning = FALSE, error = FALSE, results = 'hide'}
+#dados
+library(dplyr)
+library(tidyr)
+library(janitor)
+library(stringr)
+library(tidyverse)
+#graficos
+library(ggplot2)
+library(ggpubr)
+library(patchwork)
+```
+
+Sob a ótica da prematuridade, neste relatório será apresentada uma breve análise exploratória dos dados de 2020 do Sistema de Informações sobre Nascidos Vivos (SINASC) obtidos via pacote `{microdatasus}`, do Cadastrado Nacional de Estabelecimentos de Saúde (CNES) e do Atlas do Desenvolvimento Humano no Brasil. 
+
+\newpage
+
+# 1. Dados
+
+```{r echo=TRUE}
+# carregando microdados
+
+dados <- readr::read_csv("02.dados/7_base_final_premat_14-20[2023-08-23].csv.gz") |> 
+  select(-consprenat_na) |> 
+  # incluindo zero em informacoes na nas covariaveis do sinasc
+  mutate_at(c(10:64), ~replace_na(., 0)) |> 
+  # selecionando somente o ultimo ano da analise
+  filter(ano == 2020)
+```
+
+Foram coletadas `r dim(dados)[1]` observações, para as quais haviam ou não informações válidas em **81 variáveis**. São elas:
+
+```{r echo=TRUE}
+# nomes das variaveis
+
+names(dados)
+```
+
+\newpage
+
+# 2. Gráficos de dispersão das variáveis do SINASC
+
+Nesta seção, são apresentados gráficos de dispersão para cada uma das variáveis do SINASC, por tipo de prematuridade. Nesses gráficos também é mostrado o valor da correlação (R), cuja variação é entre -1 e 1.
+
+Código omitido. Verificar no arquivo `analise_descritiva[2023-09-01].Rmd`.
+
+## APGAR 1
+
+```{r}
+a <- dados |> 
+  ggplot(aes(x = apgar1_menor_que_4/n_cnes, y = tipopremat_eletivo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() + 
+  labs(x = "< 4",
+       y = "Prematuridade eletiva (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson", 
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+b <- dados |> 
+  ggplot(aes(x = apgar1_menor_que_4/n_cnes, y = tipopremat_espontaneo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() +
+  labs(x = "< 4",
+       y = "Prematuridade espontânea (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson", 
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+a + b
+```
+
+```{r}
+a <- dados |> 
+  ggplot(aes(x = apgar1_de_4_a_7/n_cnes, y = tipopremat_eletivo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() + 
+  labs(x = "4 a 7",
+       y = "Prematuridade eletiva (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson", 
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+b <- dados |> 
+  ggplot(aes(x = apgar1_de_4_a_7/n_cnes, y = tipopremat_espontaneo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() +
+  labs(x = "4 a 7",
+       y = "Prematuridade espontânea (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson", 
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+a + b
+```
+
+```{r}
+a <- dados |> 
+  ggplot(aes(x = apgar1_maior_que_7/n_cnes, y = tipopremat_eletivo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() + 
+  labs(x = "> 7",
+       y = "Prematuridade eletiva (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson", 
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+b <- dados |> 
+  ggplot(aes(x = apgar1_maior_que_7/n_cnes, y = tipopremat_espontaneo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() +
+  labs(x = "> 7",
+       y = "Prematuridade espontânea (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson", 
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+a + b
+```
+
+## APGAR 5
+
+```{r}
+a <- dados |> 
+  ggplot(aes(x = apgar5_menor_que_4/n_cnes, y = tipopremat_eletivo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() + 
+  labs(x = "< 4",
+       y = "Prematuridade eletiva (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson", 
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+b <- dados |> 
+  ggplot(aes(x = apgar5_menor_que_4/n_cnes, y = tipopremat_espontaneo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() +
+  labs(x = "< 4",
+       y = "Prematuridade espontânea (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson", 
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+a + b
+```
+
+```{r}
+a <- dados |> 
+  ggplot(aes(x = apgar5_de_4_a_7/n_cnes, y = tipopremat_eletivo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() + 
+  labs(x = "4 a 7",
+       y = "Prematuridade eletiva (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson", 
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+b <- dados |> 
+  ggplot(aes(x = apgar1_de_4_a_7/n_cnes, y = tipopremat_espontaneo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() +
+  labs(x = "4 a 7",
+       y = "Prematuridade espontânea (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson", 
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+a + b
+```
+
+```{r}
+a <- dados |> 
+  ggplot(aes(x = apgar1_maior_que_7/n_cnes, y = tipopremat_eletivo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() + 
+  labs(x = "> 7",
+       y = "Prematuridade eletiva (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson", 
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+b <- dados |> 
+  ggplot(aes(x = apgar1_maior_que_7/n_cnes, y = tipopremat_espontaneo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() +
+  labs(x = "> 7",
+       y = "Prematuridade espontânea (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson", 
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+a + b
+```
+
+## Número de consultas de pré-natal
+
+```{r}
+a <- dados |> 
+  ggplot(aes(x = consprenat_maior_ou_igual_a_6_consultas/n_cnes, y = tipopremat_eletivo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() + 
+  labs(x = "< 6 consultas",
+       y = "Prematuridade eletiva (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson", 
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+b <- dados |> 
+  ggplot(aes(x = consprenat_maior_ou_igual_a_6_consultas/n_cnes, y = tipopremat_espontaneo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() +
+  labs(x = "< 6 consultas",
+       y = "Prematuridade espontânea (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson", 
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+a + b
+```
+
+```{r}
+a <- dados |> 
+  ggplot(aes(x = consprenat_menor_que_6_consultas/n_cnes, y = tipopremat_eletivo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() + 
+  labs(x = "< 6 consultas",
+       y = "Prematuridade eletiva (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson", 
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+b <- dados |> 
+  ggplot(aes(x = consprenat_menor_que_6_consultas/n_cnes, y = tipopremat_espontaneo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() +
+  labs(x = "< 6 consultas",
+       y = "Prematuridade espontânea (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson", 
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+a + b
+```
+
+## Escolaridade da mãe
+
+```{r}
+a <- dados |> 
+  ggplot(aes(x = escmae2010_sem_escolaridade/n_cnes, y = tipopremat_eletivo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() + 
+  labs(x = "Sem escolaridade",
+       y = "Prematuridade eletiva (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson", 
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+b <- dados |> 
+  ggplot(aes(x = escmae2010_sem_escolaridade/n_cnes, y = tipopremat_espontaneo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() +
+  labs(x = "Sem escolaridade",
+       y = "Prematuridade espontânea (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson", 
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+a + b
+```
+
+```{r}
+a <- dados |> 
+  ggplot(aes(x = escmae2010_fundamental_1_1_a_4_serie/n_cnes, y = tipopremat_eletivo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() + 
+  labs(x = "Ens. Fundamental - 1ª a 4ª série",
+       y = "Prematuridade eletiva (%)") + 
+ stat_cor(aes(label = ..r.label..), method = "pearson", 
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+b <- dados |> 
+  ggplot(aes(x = escmae2010_fundamental_1_1_a_4_serie/n_cnes, y = tipopremat_espontaneo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() +
+  labs(x = "Ens. Fundamental - 1ª a 4ª série",
+       y = "Prematuridade espontânea (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson", 
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+a + b
+```
+
+```{r}
+a <- dados |> 
+  ggplot(aes(x = escmae2010_fundamental_2_5_a_8_serie/n_cnes, y = tipopremat_eletivo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() + 
+  labs(x = "Ens. Fundamental - 5ª a 8ª série",
+       y = "Prematuridade eletiva (%)") + 
+ stat_cor(aes(label = ..r.label..), method = "pearson", 
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+b <- dados |> 
+  ggplot(aes(x = escmae2010_fundamental_2_5_a_8_serie/n_cnes, y = tipopremat_espontaneo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() +
+  labs(x = "Ens. Fundamental - 5ª a 8ª série",
+       y = "Prematuridade espontânea (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson", 
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+a + b
+```
+
+```{r}
+a <- dados |> 
+  ggplot(aes(x = escmae2010_medio/n_cnes, y = tipopremat_eletivo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() + 
+  labs(x = "Ens. Médio",
+       y = "Prematuridade eletiva (%)") + 
+ stat_cor(aes(label = ..r.label..), method = "pearson", 
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+b <- dados |> 
+  ggplot(aes(x = escmae2010_medio/n_cnes, y = tipopremat_espontaneo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() +
+  labs(x = "Ens. Médio",
+       y = "Prematuridade espontânea (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson", 
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+a + b
+```
+
+```{r}
+a <- dados |> 
+  ggplot(aes(x = escmae2010_superior_incompleto/n_cnes, y = tipopremat_eletivo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() + 
+  labs(x = "Sup. incompleto",
+       y = "Prematuridade eletiva (%)") + 
+ stat_cor(aes(label = ..r.label..), method = "pearson", 
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+b <- dados |> 
+  ggplot(aes(x = escmae2010_superior_incompleto/n_cnes, y = tipopremat_espontaneo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() +
+  labs(x = "Sup. incompleto",
+       y = "Prematuridade espontânea (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson", 
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+a + b
+```
+
+```{r}
+a <- dados |> 
+  ggplot(aes(x = escmae2010_superior_completo/n_cnes, y = tipopremat_eletivo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() + 
+  labs(x = "Sup. completo",
+       y = "Prematuridade eletiva (%)") + 
+ stat_cor(aes(label = ..r.label..), method = "pearson", 
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+b <- dados |> 
+  ggplot(aes(x = escmae2010_superior_completo/n_cnes, y = tipopremat_espontaneo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() +
+  labs(x = "Sup. completo",
+       y = "Prematuridade espontânea (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson", 
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+a + b
+```
+
+## Estado civil da mãe
+
+```{r}
+a <- dados |> 
+  ggplot(aes(x = estcivmae_outros/n_cnes, y = tipopremat_eletivo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() + 
+  labs(x = "Casada/União estável",
+       y = "Prematuridade eletiva (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson", 
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+b <- dados |> 
+  ggplot(aes(x = estcivmae_outros/n_cnes, y = tipopremat_espontaneo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() +
+  labs(x = "Casada/União estável",
+       y = "Prematuridade espontânea (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson", 
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+a + b
+```
+
+```{r}
+a <- dados |> 
+  ggplot(aes(x = estcivmae_outros/n_cnes, y = tipopremat_eletivo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() + 
+  labs(x = "Outras",
+       y = "Prematuridade eletiva (%)") + 
+ stat_cor(aes(label = ..r.label..), method = "pearson", 
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+b <- dados |> 
+  ggplot(aes(x = estcivmae_outros/n_cnes, y = tipopremat_espontaneo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() +
+  labs(x = "Outras",
+       y = "Prematuridade espontânea (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson", 
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+a + b
+```
+
+## Tipo de gravidez
+
+```{r}
+a <- dados |> 
+  ggplot(aes(x = gravidez_unica/n_cnes, y = tipopremat_eletivo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() + 
+  labs(x = "Única",
+       y = "Prematuridade eletiva (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson",
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+b <- dados |> 
+  ggplot(aes(x = gravidez_unica/n_cnes, y = tipopremat_espontaneo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() +
+  labs(x = "Única",
+       y = "Prematuridade espontânea (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson",             
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+a + b
+```
+
+```{r}
+a <- dados |> 
+  ggplot(aes(x = gravidez_multipla/n_cnes, y = tipopremat_eletivo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() + 
+  labs(x = "Múltipla",
+       y = "Prematuridade eletiva (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson",             
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+b <- dados |> 
+  ggplot(aes(x = gravidez_multipla/n_cnes, y = tipopremat_espontaneo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() +
+  labs(x = "Múltipla",
+       y = "Prematuridade espontânea (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson",             
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+a + b
+```
+
+## Idade (faixa etária) da mãe
+
+```{r}
+a <- dados |> 
+  ggplot(aes(x = idade_menor_que_19_anos/n_cnes, y = tipopremat_eletivo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() + 
+  labs(x = "< 19 anos",
+       y = "Prematuridade eletiva (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson",             
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+b <- dados |> 
+  ggplot(aes(x = idade_menor_que_19_anos/n_cnes, y = tipopremat_espontaneo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() +
+  labs(x = "< 19 anos",
+       y = "Prematuridade espontânea (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson",             
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+a + b
+```
+
+```{r}
+a <- dados |> 
+  ggplot(aes(x = idade_de_19_a_35_anos/n_cnes, y = tipopremat_eletivo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() + 
+  labs(x = "19 a 35 anos",
+       y = "Prematuridade eletiva (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson",             
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+b <- dados |> 
+  ggplot(aes(x = idade_de_19_a_35_anos/n_cnes, y = tipopremat_espontaneo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() +
+  labs(x = "19 a 35 anos",
+       y = "Prematuridade espontânea (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson",           
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+a + b
+```
+
+```{r}
+a <- dados |> 
+  ggplot(aes(x = idade_maior_que_35_anos/n_cnes, y = tipopremat_eletivo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() + 
+  labs(x = "> 35 anos",
+       y = "Prematuridade eletiva (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson",             
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+b <- dados |> 
+  ggplot(aes(x = idade_maior_que_35_anos/n_cnes, y = tipopremat_espontaneo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() +
+  labs(x = "> 35 anos",
+       y = "Prematuridade espontânea (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson",    
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+a + b
+```
+
+## Local de nascimento 
+
+```{r}
+a <- dados |> 
+  ggplot(aes(x = locnasc_hospital/n_cnes, y = tipopremat_eletivo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() + 
+  labs(x = "Hospital",
+       y = "Prematuridade eletiva (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson",         
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+b <- dados |> 
+  ggplot(aes(x = locnasc_hospital/n_cnes, y = tipopremat_espontaneo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() +
+  labs(x = "Hospital",
+       y = "Prematuridade espontânea (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson",    
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+a + b
+```
+
+```{r}
+a <- dados |> 
+  ggplot(aes(x = locnasc_outros_estabelecimentos_de_saude/n_cnes, y = tipopremat_eletivo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() + 
+  labs(x = "Outros",
+       y = "Prematuridade eletiva (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson",         
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+b <- dados |> 
+  ggplot(aes(x = locnasc_outros_estabelecimentos_de_saude/n_cnes, y = tipopremat_espontaneo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() +
+  labs(x = "Outros",
+       y = "Prematuridade espontânea (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson",    
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+a + b
+```
+
+## Mês de gestação que iniciou o pré-natal
+
+```{r}
+a <- dados |> 
+  ggplot(aes(x = mesprenat_do_1_ao_3_mes/n_cnes, y = tipopremat_eletivo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() + 
+  labs(x = "1º ao 3º mês",
+       y = "Prematuridade eletiva (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson",           
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+b <- dados |> 
+  ggplot(aes(x = mesprenat_do_1_ao_3_mes/n_cnes, y = tipopremat_espontaneo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() +
+  labs(x = "1º ao 3º mês",
+       y = "Prematuridade espontânea (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson",            
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+a + b
+```
+
+```{r}
+a <- dados |> 
+  ggplot(aes(x = mesprenat_do_4_ao_9_mes/n_cnes, y = tipopremat_eletivo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() + 
+  labs(x = "4º ao 9º mês",
+       y = "Prematuridade eletiva (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson",          
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+b <- dados |> 
+  ggplot(aes(x = mesprenat_do_4_ao_9_mes/n_cnes, y = tipopremat_espontaneo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() +
+  labs(x = "4º ao 9º mês",
+       y = "Prematuridade espontânea (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson",         
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+a + b
+```
+
+## Tipo de parto
+
+```{r}
+a <- dados |> 
+  ggplot(aes(x = parto_cesareo/n_cnes, y = tipopremat_eletivo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() + 
+  labs(x = "Cesáreo",
+       y = "Prematuridade eletiva (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson",      
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+b <- dados |> 
+  ggplot(aes(x = parto_cesareo/n_cnes, y = tipopremat_espontaneo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() +
+  labs(x = "Cesáreo",
+       y = "Prematuridade espontânea (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson",    
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+a + b
+```
+
+```{r}
+a <- dados |> 
+  ggplot(aes(x = parto_vaginal/n_cnes, y = tipopremat_eletivo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() + 
+  labs(x = "Vaginal",
+       y = "Prematuridade eletiva (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson",  
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+b <- dados |> 
+  ggplot(aes(x = parto_vaginal/n_cnes, y = tipopremat_espontaneo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() +
+  labs(x = "Vaginal",
+       y = "Prematuridade espontânea (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson",   
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+a + b
+```
+
+## Quantidade de filhos vivos 
+
+```{r}
+a <- dados |> 
+  ggplot(aes(x = qtdfilvivo_nenhum/n_cnes, y = tipopremat_eletivo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() + 
+  labs(x = "Nenhum",
+       y = "Prematuridade eletiva (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson",          
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+b <- dados |> 
+  ggplot(aes(x = qtdfilvivo_nenhum/n_cnes, y = tipopremat_espontaneo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() +
+  labs(x = "Nenhum",
+       y = "Prematuridade espontânea (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson",          
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+a + b
+```
+
+```{r}
+a <- dados |> 
+  ggplot(aes(x = qtdfilvivo_de_1_a_3_filhos/n_cnes, y = tipopremat_eletivo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() + 
+  labs(x = "1 a 3 filhos vivos",
+       y = "Prematuridade eletiva (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson",          
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+b <- dados |> 
+  ggplot(aes(x = qtdfilvivo_de_1_a_3_filhos/n_cnes, y = tipopremat_espontaneo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() +
+  labs(x = "1 a 3 filhos vivos",
+       y = "Prematuridade espontânea (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson",      
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+a + b
+```
+
+```{r}
+a <- dados |> 
+  ggplot(aes(x = qtdfilvivo_mais_que_3_filhos/n_cnes, y = tipopremat_eletivo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() + 
+  labs(x = "> 3 filhos vivos",
+       y = "Prematuridade eletiva (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson",     
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+b <- dados |> 
+  ggplot(aes(x = qtdfilvivo_mais_que_3_filhos/n_cnes, y = tipopremat_espontaneo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() +
+  labs(x = "> 3 filhos vivos",
+       y = "Prematuridade espontânea (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson",        
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+a + b
+```
+
+## Número de gestações anteriores
+
+```{r}
+a <- dados |> 
+  ggplot(aes(x = qtdgestant_nenhuma/n_cnes, y = tipopremat_eletivo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() + 
+  labs(x = "Nenhuma",
+       y = "Prematuridade eletiva (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson",    
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+b <- dados |> 
+  ggplot(aes(x = qtdgestant_nenhuma/n_cnes, y = tipopremat_espontaneo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() +
+  labs(x = "Nenhuma",
+       y = "Prematuridade espontânea (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson",     
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+a + b
+```
+
+```{r}
+a <- dados |> 
+  ggplot(aes(x = qtdgestant_de_1_a_3_gestacoes/n_cnes, y = tipopremat_eletivo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() + 
+  labs(x = "1 a 3 gestações",
+       y = "Prematuridade eletiva (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson",    
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+b <- dados |> 
+  ggplot(aes(x = qtdgestant_de_1_a_3_gestacoes/n_cnes, y = tipopremat_espontaneo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() +
+  labs(x = "1 a 3 gestações",
+       y = "Prematuridade espontânea (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson",     
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+a + b
+```
+
+```{r}
+a <- dados |> 
+  ggplot(aes(x = qtdgestant_mais_que_3_gestacoes/n_cnes, y = tipopremat_eletivo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() + 
+  labs(x = "> 3 gestações",
+       y = "Prematuridade eletiva (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson",    
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+b <- dados |> 
+  ggplot(aes(x = qtdgestant_mais_que_3_gestacoes/n_cnes, y = tipopremat_espontaneo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() +
+  labs(x = "> 3 gestações",
+       y = "Prematuridade espontânea (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson",     
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+a + b
+```
+
+## Raça/cor do nascido
+
+```{r}
+a <- dados |> 
+  ggplot(aes(x = racacor_branca_amarela/n_cnes, y = tipopremat_eletivo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() + 
+  labs(x = "Branca/Amarela",
+       y = "Prematuridade eletiva (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson",       
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+b <- dados |> 
+  ggplot(aes(x = racacor_branca_amarela/n_cnes, y = tipopremat_espontaneo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() +
+  labs(x = "Branca/Amarela",
+       y = "Prematuridade espontânea (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson",     
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+a + b
+```
+
+```{r}
+a <- dados |> 
+  ggplot(aes(x = racacor_preta_parda/n_cnes, y = tipopremat_eletivo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() + 
+  labs(x = "Preta/Parda",
+       y = "Prematuridade eletiva (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson",       
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+b <- dados |> 
+  ggplot(aes(x = racacor_preta_parda/n_cnes, y = tipopremat_espontaneo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() +
+  labs(x = "Preta/Parda",
+       y = "Prematuridade espontânea (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson",     
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+a + b
+```
+
+```{r}
+a <- dados |> 
+  ggplot(aes(x = racacor_indigena/n_cnes, y = tipopremat_eletivo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() + 
+  labs(x = "Indígena",
+       y = "Prematuridade eletiva (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson",       
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+b <- dados |> 
+  ggplot(aes(x = racacor_indigena/n_cnes, y = tipopremat_espontaneo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() +
+  labs(x = "Indígena",
+       y = "Prematuridade espontânea (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson",     
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+a + b
+```
+
+## Raça/cor da mãe
+
+```{r}
+a <- dados |> 
+  ggplot(aes(x = racacormae_branca_amarela/n_cnes, y = tipopremat_eletivo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() + 
+  labs(x = "Branca/Amarela",
+       y = "Prematuridade eletiva (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson",       
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+b <- dados |> 
+  ggplot(aes(x = racacor_branca_amarela/n_cnes, y = tipopremat_espontaneo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() +
+  labs(x = "Branca/Amarela",
+       y = "Prematuridade espontânea (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson",     
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+a + b
+```
+
+```{r}
+a <- dados |> 
+  ggplot(aes(x = racacormae_preta_parda/n_cnes, y = tipopremat_eletivo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() + 
+  labs(x = "Preta/Parda",
+       y = "Prematuridade eletiva (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson",       
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+b <- dados |> 
+  ggplot(aes(x = racacor_preta_parda/n_cnes, y = tipopremat_espontaneo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() +
+  labs(x = "Preta/Parda",
+       y = "Prematuridade espontânea (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson",     
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+a + b
+```
+
+```{r}
+a <- dados |> 
+  ggplot(aes(x = racacormae_indigena/n_cnes, y = tipopremat_eletivo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() + 
+  labs(x = "Indígena",
+       y = "Prematuridade eletiva (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson",       
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+b <- dados |> 
+  ggplot(aes(x = racacor_indigena/n_cnes, y = tipopremat_espontaneo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() +
+  labs(x = "Indígena",
+       y = "Prematuridade espontânea (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson",     
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+a + b
+```
+
+## Sexo do nascido
+
+```{r}
+a <- dados |> 
+  ggplot(aes(x = sexo_feminino/n_cnes, y = tipopremat_eletivo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() + 
+  labs(x = "Feminino",
+       y = "Prematuridade eletiva (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson",   
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+b <- dados |> 
+  ggplot(aes(x = sexo_feminino/n_cnes, y = tipopremat_espontaneo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() +
+  labs(x = "Feminino",
+       y = "Prematuridade espontânea (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson",      
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+a + b
+```
+
+```{r}
+a <- dados |> 
+  ggplot(aes(x = sexo_masculino/n_cnes, y = tipopremat_eletivo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() + 
+  labs(x = "Masculino",
+       y = "Prematuridade eletiva (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson",   
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+b <- dados |> 
+  ggplot(aes(x = sexo_masculino/n_cnes, y = tipopremat_espontaneo/n_cnes)) + 
+  geom_point(alpha = 0.5) + 
+  theme_bw() +
+  labs(x = "Masculino",
+       y = "Prematuridade espontânea (%)") + 
+  stat_cor(aes(label = ..r.label..), method = "pearson",      
+           label.x = 0.5, label.y = 0.85, size = 3.5, color = "red")
+
+a + b
+```
+
+\newpage
+
+# 3. Gráficos de dispersão das variáveis do Atlas Brasil
+
+Nesta seção, são apresentados gráficos de dispersão para as variávieis IDHM (`idhm_2010_estado`) e Índice de Gini (`indice_de_gini_2010_estado`), por tipo de prematuridade.
+
+Código omitido. Verificar no arquivo `analise_descritiva[2023-09-01].Rmd`.
+
+## IDHM
+
+```{r}
+dados_idh <- dados |> 
+  dplyr::filter(!is.na(sigla_uf)) |> 
+  dplyr::group_by(sigla_uf) |> 
+  dplyr::summarise(
+            eletivo = sum(tipopremat_eletivo),
+            espontaneo = sum(tipopremat_espontaneo),
+            n_cnes = sum(n_cnes), 
+            idh = mean(idhm_2010_estado, na.rm = TRUE)
+            ) |> 
+  mutate(p_eletivo = eletivo/n_cnes) |> 
+  mutate(p_espontaneo = espontaneo/n_cnes) |> 
+  dplyr::select(sigla_uf, p_eletivo, p_espontaneo, idh) |> 
+  mutate(idh = ifelse(sigla_uf == "DF", 0.824, idh))
+
+
+a <- dados_idh |>
+  ggplot(aes(idh, p_eletivo, label = sigla_uf)) +
+  geom_point() +
+  labs(x = "IDHM",
+       y = "% parto eletivo"
+  ) +
+  geom_text(hjust=0, vjust=0) +
+  theme_bw() +
+  theme(
+    title = element_text(face = "bold"),
+    axis.text = element_text(face = "bold"),
+    panel.grid.minor.y = element_blank(),
+    plot.title = element_text(size = 15,
+                              hjust = .5)
+  )
+
+b <- dados_idh |>
+  ggplot(aes(idh, p_espontaneo, label = sigla_uf)) +
+  geom_point() +
+  labs(x = "IDHM",
+       y = "% parto espontâneo"
+  ) +
+  geom_text(hjust=0, vjust=0) +
+  theme_bw() +
+  theme(
+    title = element_text(face = "bold"),
+    axis.text = element_text(face = "bold"),
+    panel.grid.minor.y = element_blank(),
+    plot.title = element_text(size = 15,
+                              hjust = .5)
+  )
+
+a + b
+```
+
+## Índice de Gini
+
+```{r}
+dados_gini <- dados |> 
+  dplyr::filter(!is.na(sigla_uf)) |> 
+  dplyr::group_by(sigla_uf) |> 
+  dplyr::summarise(
+            eletivo = sum(tipopremat_eletivo),
+            espontaneo = sum(tipopremat_espontaneo),
+            n_cnes = sum(n_cnes), 
+            gini = mean(indice_de_gini_2010_estado, na.rm = TRUE)
+            ) |> 
+  mutate(p_eletivo = eletivo/n_cnes) |> 
+  mutate(p_espontaneo = espontaneo/n_cnes) |> 
+  dplyr::select(sigla_uf, p_eletivo, p_espontaneo, gini) |> 
+  mutate(gini = ifelse(sigla_uf == "DF", 0.824, gini))
+
+
+a <- dados_gini |>
+  ggplot(aes(gini, p_eletivo, label = sigla_uf)) +
+  geom_point() +
+  labs(x = "Índice de Gini",
+       y = "Prematuridade eletiva (%)"
+  ) +
+  geom_text(hjust=0, vjust=0) +
+  theme_bw() +
+  theme(
+    title = element_text(face = "bold"),
+    axis.text = element_text(face = "bold"),
+    panel.grid.minor.y = element_blank(),
+    plot.title = element_text(size = 15,
+                              hjust = .5)
+  )
+
+b <- dados_gini |>
+  ggplot(aes(gini, p_espontaneo, label = sigla_uf)) +
+  geom_point() +
+  labs(x = "Índice de Gini",
+       y = "Prematuridade espontânea (%)"
+  ) +
+  geom_text(hjust=0, vjust=0) +
+  theme_bw() +
+  theme(
+    title = element_text(face = "bold"),
+    axis.text = element_text(face = "bold"),
+    panel.grid.minor.y = element_blank(),
+    plot.title = element_text(size = 15,
+                              hjust = .5)
+  )
+
+a + b
+```
+
+\newpage
+
+# 4. Gráfico de boxplot da variável do CNES
+
+Nesta seção, é apresentado o gráfico de boxplot para a variável vínculo com o SUS (`vinc_sus`), por tipo de prematuridade.
+
+Código omitido. Verificar no arquivo `analise_descritiva[2023-09-01].Rmd`.
+
+## Vínculo com o SUS
+
+```{r}
+a <- dados |> 
+  mutate(vinc_sus_recod = ifelse(vinc_sus == 0, "Não", "Sim")) |> 
+  dplyr::filter(!is.na(vinc_sus)) |>
+  ggplot(aes(x = as.factor(vinc_sus_recod), y = tipopremat_eletivo/n_cnes)) + 
+  geom_boxplot() +
+  theme_bw() + 
+  labs(x = "Vínculo com o SUS",
+       y = "Prematuridade eletiva (%)")
+
+b <- dados |>
+  mutate(vinc_sus_recod = ifelse(vinc_sus == 0, "Não", "Sim")) |> 
+  dplyr::filter(!is.na(vinc_sus)) |> 
+  ggplot(aes(x = as.factor(vinc_sus_recod), y = tipopremat_espontaneo/n_cnes)) + 
+  geom_boxplot() + 
+  theme_bw() +
+  labs(x = "Vínculo com o SUS",
+       y = "Prematuridade espontânea (%)")
+
+a + b
+```
+
+
+
+
+
+
+
+
+
+
