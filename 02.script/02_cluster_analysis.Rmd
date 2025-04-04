@@ -1,0 +1,723 @@
+---
+title: "Seleção dos modelos"
+output:
+  pdf_document:
+    latex_engine: xelatex
+    toc: true
+    toc_depth: 3
+    number_sections: true
+header-includes:
+  - "\\usepackage{graphicx}"
+  - "\\usepackage{multirow}"
+  - "\\usepackage{titlesec}"
+  - "\\titleformat{\\chapter}[display]{\\normalfont\\bfseries}{}{0pt}{\\Large}"
+  - "\\titleformat{\\section}[block]{\\normalfont\\bfseries}{\\thesection}{1em}{\\Large}"
+  - "\\titleformat{\\subsection}[block]{\\normalfont\\bfseries}{\\thesubsection}{1em}{\\large}"
+  - "\\titleformat{\\subsubsection}[block]{\\normalfont\\bfseries}{\\thesubsubsection}{1em}{\\normalsize}"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+```
+
+
+```{r}
+#dados
+library(dplyr)
+library(tibble)
+library(tidyr)
+#cluster
+library(cluster)
+library(factoextra)
+#graficos
+library(ggplot2)
+library(viridis)
+library(patchwork)
+library(ggcorrplot)
+library(clValid)
+library(clusterSim)
+library(knitr)
+library(kableExtra)
+library(modelsummary)
+```
+
+
+```{r}
+# dados -------------------------------------------------------------------
+
+d_premat <- readr::read_csv("01.data/7_base_final_premat_14-20[2023-10-08].csv.gz")
+
+
+# manipulacao -------------------------------------------------------------
+
+d_part <- d_premat |> 
+  # ano de 2020
+  filter(ano == 2020) |> #5.501 observacoes
+  # cnes unico
+  distinct(cnes, .keep_all = TRUE) |> 
+  mutate(
+    cnes = as.character(cnes),
+    vinc_sus = as.factor(vinc_sus)
+  ) |> 
+  dplyr::select(
+    nome_uf, nome_mun, cnes, tipo_cnes, vinc_sus, n_cnes, 
+    tipopremat_espontaneo, tipopremat_eletivo,
+    consprenat_menor_que_6_consultas, 
+    #consprenat_maior_ou_igual_a_6_consultas,
+    indice_de_gini_2010_municipio, 
+    #indice_de_gini_2010_estado 
+    idhm_2010_municipio
+    #idhm_2010_estado
+  ) |> 
+  # covariaveis em percentual
+  mutate_at(c(7:9), ~(. / n_cnes)) |> 
+  # so respostas validas
+  drop_na() #2.447 observacoes
+
+d_part_cnes <- d_part |> 
+  # padronizacao
+  mutate_if(is.numeric, scale) |> 
+  dplyr::select(3, 6:11) |>
+  # cnes como 'numero' da linha
+  column_to_rownames("cnes")
+```
+
+
+
+
+```{r out.height="65%", out.width= "90%"}
+# metodo do cotovelo ------------------------------------------------------
+
+# k-medias
+
+cot1 <- fviz_nbclust(
+  d_part_cnes, 
+  kmeans, 
+  method = "wss",
+  linecolor = "#000000"
+) +
+  geom_vline(xintercept = 4, linetype = 2, linewidth = 1.2, color = "#ff0000") +
+  labs(title = "Elbow method for K-means") +
+  xlab("Values of k") +
+  ylab("total intragroup variance")
+
+# pam
+
+cot2 <- fviz_nbclust(
+  d_part_cnes, 
+  cluster::pam, 
+  method = "wss",
+  linecolor = "#000000"
+) +
+  geom_vline(xintercept = 5, linetype = 2, linewidth = 1.2, color = "#ff0000") +
+  labs(title = "PAM") +
+  xlab("Número k de clusters") +
+  ylab("")
+
+# clara
+
+cot3 <- fviz_nbclust(
+  d_part_cnes, 
+  cluster::clara, 
+  method = "wss",
+  linecolor = "#000000"
+) +
+  geom_vline(xintercept = 4, linetype = 2, linewidth = 1.2, color = "#ff0000") +
+  labs(title = "Clara") +
+  xlab("") +
+  ylab("")
+
+
+
+
+(cot1 / cot2 / cot3)
+```
+
+
+```{r include=FALSE}
+# metodo c/ melhor k
+
+set.seed(777)
+
+kmed <- kmeans(d_part_cnes, centers = 4, nstart = 25)
+
+d_km_final <- d_part_cnes |> 
+  bind_cols(cluster = kmed$cluster)
+
+
+fviz_cluster(
+  kmed,
+  data = d_km_final,
+  geom = "point", ellipse.type = "euclid"
+) + 
+  labs(title = "") +
+  theme_bw() +
+  theme(legend.position = "bottom", text = element_text(size = 15)) +
+  scale_colour_viridis_d("Cluster") + 
+  scale_fill_viridis_d("Cluster") +
+  guides(shape = "none")
+
+
+# dados originais c/ cluster
+
+d_km_clus <- d_part |> 
+  bind_cols(cluster = kmed$cluster) |> 
+  mutate_at("cluster", as.factor)
+
+# Resumo estatístico dos grupos
+resumo_kmedias <- d_km_clus %>%
+  group_by(cluster) %>%
+  summarize(
+    Media_Tipopremat_espontaneo = mean(tipopremat_espontaneo),
+    Media_Tipopremat_eletivo = mean(tipopremat_eletivo),
+    Media_Consprenat_menor_que_6_consultas = mean(consprenat_menor_que_6_consultas),
+    Media_Indice_de_gini_2010_municipio = mean(indice_de_gini_2010_municipio),
+    Media_Idhm_2010_municipio = mean(idhm_2010_municipio),
+    Contagem = n()
+  )
+
+knitr::kable(resumo_kmedias, caption = "Tabela resumo dos grupos obtidos pelo agrupamento K-médias.") |> 
+  kable_styling(latex_options = "scale_down")
+```
+
+
+
+```{r include=FALSE}
+set.seed(123)
+
+pam <- pam(d_part_cnes, k = 5)
+
+d_pam_final <- d_part_cnes |> 
+  bind_cols(cluster = pam$cluster)
+
+# dados originais c/ cluster
+
+d_pam_clus <- d_part |> 
+  bind_cols(cluster = pam$cluster) |> 
+  mutate_at("cluster", as.factor)
+
+# Resumo estatístico dos grupos
+resumo_pam <- d_pam_clus %>%
+  group_by(cluster) %>%
+  summarize(
+    Media_Tipopremat_espontaneo = mean(tipopremat_espontaneo),
+    Media_Tipopremat_eletivo = mean(tipopremat_eletivo),
+    Media_Consprenat_menor_que_6_consultas = mean(consprenat_menor_que_6_consultas),
+    Media_Indice_de_gini_2010_municipio = mean(indice_de_gini_2010_municipio),
+    Media_Idhm_2010_municipio = mean(idhm_2010_municipio),
+    Contagem = n()
+  )
+
+knitr::kable(resumo_pam, caption = "Tabela resumo dos grupos obtidos pelo agrupamento PAM.") |> 
+  kable_styling(latex_options = "scale_down")
+
+
+
+
+```
+
+
+```{r include=FALSE}
+set.seed(123)
+
+clara <- cluster::clara(d_part_cnes, k = 4)
+
+d_clara_final <- d_part_cnes |> 
+  bind_cols(cluster = clara$cluster)
+
+# dados originais c/ cluster
+
+d_clara_clus <- d_part |> 
+  bind_cols(cluster = clara$cluster) |> 
+  mutate_at("cluster", as.factor)
+
+# Resumo estatístico dos grupos
+resumo_clara <- d_clara_clus %>%
+  group_by(cluster) %>%
+  summarize(
+    Media_Tipopremat_espontaneo = mean(tipopremat_espontaneo),
+    Media_Tipopremat_eletivo = mean(tipopremat_eletivo),
+    Media_Consprenat_menor_que_6_consultas = mean(consprenat_menor_que_6_consultas),
+    Media_Indice_de_gini_2010_municipio = mean(indice_de_gini_2010_municipio),
+    Media_Idhm_2010_municipio = mean(idhm_2010_municipio),
+    Contagem = n()
+  )
+
+
+knitr::kable(resumo_clara, caption = "Tabela resumo dos grupos obtidos pelo agrupamento CLARA.", scale = 0.5) |> 
+  kable_styling(latex_options = "scale_down")
+```
+
+
+
+```{r}
+Valores de k a serem testados
+k_values <- 3:8
+
+# Lista para armazenar os resultados
+diana_results <- list()
+
+# Executar o algoritmo DIANA e armazenar os resultados para diferentes valores de k
+for (k in k_values) {
+  diana_result <- diana(d_part_cnes)
+  cutree_result <- cutree(diana_result, k = k)
+  cluster_sizes <- table(cutree_result)
+
+  diana_results[[k]] <- data.frame(
+    K = k,
+    Grupo = 1:max(cutree_result),
+    diana = cluster_sizes
+  )
+}
+
+# Combine os resultados em uma única tabela
+result_table <- do.call(rbind, diana_results)
+result_table <- result_table |>
+  dplyr::select(K, Grupo, diana.Freq)
+
+
+knitr::kable(result_table)
+```
+
+
+
+```{r out.height="65%", out.width= "90%"}
+# selecao do melhor eps
+d_dbs_cnes <- d_part_cnes
+d_dbs <- d_part
+
+dbscan::kNNdistplot(d_dbs_cnes, k = 2 ) #segundo nbclust
+abline(h = 1.18, lty = 2, col = "#ff0000")
+
+
+```
+
+
+
+```{r}
+# selecao do melhor eps
+
+
+# metodo
+
+set.seed(123)
+
+dbsc <- dbscan::dbscan(d_dbs_cnes, eps = 1.18, minPts = 4) #87 outliers
+
+# clusters ----------------------------------------------------------------
+
+d_dbs_clus <- d_dbs |>
+  bind_cols(cluster = dbsc$cluster) |>
+  # remove outliers
+  filter(cluster != 0) |>
+  mutate_at("cluster", as.factor)
+
+cluster_summary <- d_dbs_clus %>%
+  group_by(cluster) %>%
+  summarize(Número_de_Observações = n())
+
+cluster_summary <- cluster_summary %>%
+  mutate(cluster = ifelse(cluster == 0, "Outlier", as.character(cluster)))
+
+
+knitr::kable(cluster_summary)
+
+
+# clusters ----------------------------------------------------------------
+
+d_dbs_clus <- d_dbs |>
+  bind_cols(cluster = dbsc$cluster) |>
+  # remove outliers
+  #filter(cluster != 0) |>
+  mutate_at("cluster", as.factor)
+
+cluster_summary <- d_dbs_clus %>%
+  mutate(cluster = ifelse(cluster == 0, "Outlier", as.character(cluster)))
+
+datasummary(
+  (n_cnes + tipopremat_espontaneo + tipopremat_eletivo +
+    consprenat_menor_que_6_consultas +
+    indice_de_gini_2010_municipio  +
+    idhm_2010_municipio ) ~ cluster * (mean + sd + min + median + max),
+  fmt = "%.3f",
+  data = cluster_summary[ , 4:12]
+) |> 
+  kable_styling(latex_options = "scale_down")
+
+n_dbs <- cluster_summary |> 
+  group_by(cluster) |> 
+  summarise(n = n())
+
+```
+
+
+```{r eval=FALSE}
+
+d_dbs_clus <- d_dbs |>
+  bind_cols(cluster = dbsc$cluster) |>
+  # remove outliers
+  filter(cluster != 0) |>
+  mutate_at("cluster", as.factor)
+
+d_dbs_clus_media <- d_dbs_clus %>%
+  group_by(cluster) %>%
+  summarize(
+    Media_Tipopremat_espontaneo = mean(tipopremat_espontaneo),
+    Media_Tipopremat_eletivo = mean(tipopremat_eletivo),
+    Media_Consprenat_menor_que_6_consultas = mean(consprenat_menor_que_6_consultas),
+    Media_Indice_de_gini_2010_municipio = mean(indice_de_gini_2010_municipio),
+    Media_Idhm_2010_municipio = mean(idhm_2010_municipio),
+    Contagem = n()
+  )
+
+# Selecione os dados para cada cluster
+cluster1_data <- filter(d_dbs_clus, cluster == 1)
+cluster2_data <- filter(d_dbs_clus, cluster == 2)
+
+### Teste de Wilcoxon-Mann-Whitney:
+wilcox.test(cluster1_data$tipopremat_espontaneo, cluster2_data$tipopremat_espontaneo)
+
+wilcox.test(cluster1_data$tipopremat_eletivo, cluster2_data$tipopremat_eletivo)
+
+wilcox.test(cluster1_data$consprenat_menor_que_6_consultas, cluster2_data$consprenat_menor_que_6_consultas)
+
+wilcox.test(cluster1_data$indice_de_gini_2010_municipio, cluster2_data$indice_de_gini_2010_municipio)
+
+wilcox.test(cluster1_data$idhm_2010_municipio, cluster2_data$idhm_2010_municipio)
+
+### teste T
+
+t.test(cluster1_data$tipopremat_espontaneo, cluster2_data$tipopremat_espontaneo)
+
+t.test(cluster1_data$tipopremat_eletivo, cluster2_data$tipopremat_eletivo)
+
+t.test(cluster1_data$consprenat_menor_que_6_consultas, cluster2_data$consprenat_menor_que_6_consultas)
+
+t.test(cluster1_data$indice_de_gini_2010_municipio, cluster2_data$indice_de_gini_2010_municipio)
+
+t.test(cluster1_data$idhm_2010_municipio, cluster2_data$idhm_2010_municipio)
+
+```
+
+
+## Seleção do Melhor Método
+
+
+```{r eval=FALSE}
+# # set.seed(777)
+# #
+kmed <- kmeans(d_part_cnes, centers = 4, nstart = 25)
+pam <- pam(d_part_cnes, k = 5)
+clara <- cluster::clara(d_part_cnes, k = 4)
+dbscan <- dbscan::dbscan(d_part_cnes, eps = 1.18, minPts = 4)
+
+### index
+clusterSim::index.DB(d_part_cnes, kmed$cluster)$DB
+clusterSim::index.DB(d_part_cnes, pam$cluster)$DB
+clusterSim::index.DB(d_part_cnes, clara$cluster)$DB
+clusterSim::index.DB(d_part_cnes, dbscan$cluster)$DB
+
+### dunn
+clValid::dunn(dist(d_part_cnes), kmed$cluster)
+clValid::dunn(dist(d_part_cnes), pam$cluster)
+clValid::dunn(dist(d_part_cnes), clara$cluster)
+clValid::dunn(dist(d_part_cnes), dbscan$cluster)
+
+### silhueta
+clusterSim::index.S(dist(d_part_cnes), kmed$cluster)
+clusterSim::index.S(dist(d_part_cnes), pam$cluster)
+clusterSim::index.S(dist(d_part_cnes), clara$cluster)
+clusterSim::index.S(dist(d_part_cnes), dbscan$cluster)
+
+# --------------------- diana
+
+diana <- diana(d_part_cnes)
+
+diana_3 <- cutree(diana, 3)
+diana_4 <- cutree(diana, 4)
+diana_5 <- cutree(diana, 5)
+diana_6 <- cutree(diana, 6)
+diana_7 <- cutree(diana, 7)
+diana_8 <- cutree(diana, 8)
+
+### index
+
+index.DB(d_part_cnes, diana_3)$DB
+index.DB(d_part_cnes, diana_4)$DB
+index.DB(d_part_cnes, diana_5)$DB
+index.DB(d_part_cnes, diana_6)$DB
+index.DB(d_part_cnes, diana_7)$DB
+index.DB(d_part_cnes, diana_8)$DB
+
+### dunn
+
+clValid::dunn(dist(d_part_cnes), diana_3)
+clValid::dunn(dist(d_part_cnes), diana_4)
+clValid::dunn(dist(d_part_cnes), diana_5)
+clValid::dunn(dist(d_part_cnes), diana_6)
+clValid::dunn(dist(d_part_cnes), diana_7)
+clValid::dunn(dist(d_part_cnes), diana_8)
+
+### silhueta
+
+clusterSim::index.S(dist(d_part_cnes), diana_3)
+clusterSim::index.S(dist(d_part_cnes), diana_4)
+clusterSim::index.S(dist(d_part_cnes), diana_5)
+clusterSim::index.S(dist(d_part_cnes), diana_6)
+clusterSim::index.S(dist(d_part_cnes), diana_7)
+clusterSim::index.S(dist(d_part_cnes), diana_8)
+
+```
+
+
+## Análise de Resultado 
+
+```{r eval=FALSE}
+n_clust <- d_km_final |>
+  group_by(cluster) |>
+  summarise(n = n())
+```
+
+
+```{r eval=FALSE}
+
+# dados originais c/ cluster
+
+
+
+
+tabelas_tipopremat_espontaneo <- d_km_clus %>%
+  group_by(cluster) %>%
+  summarise(
+    media = mean(tipopremat_espontaneo),
+    dp = sd(tipopremat_espontaneo),
+    min = min(tipopremat_espontaneo),
+    med = median(tipopremat_espontaneo),
+    max = max(tipopremat_espontaneo)
+  ) %>%
+  ungroup()
+
+####
+
+tabelas_tipopremat_eletivo <- d_km_clus %>%
+  group_by(cluster) %>%
+  summarise(
+    media = mean(tipopremat_eletivo),
+    dp = sd(tipopremat_eletivo),
+    min = min(tipopremat_eletivo),
+    med = median(tipopremat_eletivo),
+    max = max(tipopremat_eletivo)
+  ) %>%
+  ungroup()
+
+####
+
+tabelas_tipopremat_espontaneo <- d_km_clus %>%
+  group_by(cluster) %>%
+  summarise(
+    media = mean(tipopremat_espontaneo),
+    dp = sd(tipopremat_espontaneo),
+    min = min(tipopremat_espontaneo),
+    med = median(tipopremat_espontaneo),
+    max = max(tipopremat_espontaneo)
+  ) %>%
+  ungroup()
+
+####
+
+tabelas_consprenat_menor_que_6_consultas <- d_km_clus %>%
+  group_by(cluster) %>%
+  summarise(
+    media = mean(consprenat_menor_que_6_consultas),
+    dp = sd(consprenat_menor_que_6_consultas),
+    min = min(consprenat_menor_que_6_consultas),
+    med = median(consprenat_menor_que_6_consultas),
+    max = max(consprenat_menor_que_6_consultas)
+  ) %>%
+  ungroup()
+
+####
+
+tabelas_indice_de_gini_2010_municipio <- d_km_clus %>%
+  group_by(cluster) %>%
+  summarise(
+    media = mean(indice_de_gini_2010_municipio),
+    dp = sd(indice_de_gini_2010_municipio),
+    min = min(indice_de_gini_2010_municipio),
+    med = median(indice_de_gini_2010_municipio),
+    max = max(indice_de_gini_2010_municipio)
+  ) %>%
+  ungroup()
+
+tabelas_idhm_2010_municipio <- d_km_clus %>%
+  group_by(cluster) %>%
+  summarise(
+    media = mean(idhm_2010_municipio),
+    dp = sd(idhm_2010_municipio),
+    min = min(idhm_2010_municipio),
+    med = median(idhm_2010_municipio),
+    max = max(idhm_2010_municipio)
+  ) %>%
+  ungroup()
+
+```
+
+
+
+
+```{r box-nasc, fig.cap="Gráficos de boxplot das variáveis de nascimento por grupo.", fig.show='asis'}
+
+
+########## tipo de prematuridade
+
+
+a <- ggplot(d_km_clus, aes(x = as.factor(cluster), y = (tipopremat_espontaneo))) + 
+  geom_boxplot(fill = "aquamarine4") + 
+  labs(y = "Percentage", x = "Cluster", title = "Spontaneous prematurity",
+       fill = "") + 
+  theme_classic() +
+  theme(plot.title = element_text(size = 7))
+
+b <- ggplot(d_km_clus, aes(x = as.factor(cluster), y = (tipopremat_eletivo))) + 
+  geom_boxplot(fill = "aquamarine4") + 
+  labs(y = "Percentage", x = "Cluster", title = "Elective prematurity",
+       fill = "") + 
+  theme_classic() +
+  theme(plot.title = element_text(size = 7))
+
+c <- ggplot(d_km_clus, aes(x = as.factor(cluster), y = (consprenat_menor_que_6_consultas))) + 
+  geom_boxplot(fill = "aquamarine4") + 
+  labs(y = "Percentage", x = "Cluster", title = "Less than 6 visits to antenatal",
+       fill = "") + 
+  theme_classic() +
+  theme(plot.title = element_text(size = 7))
+
+(a + b + c)
+```
+
+
+
+```{r fig:box-socio, fig.cap="Gráficos de boxplot das variáveis socioeconômicas por grupo.", fig.show='asis'}
+########## variáveis socio
+
+d <- ggplot(d_km_clus, aes(x = as.factor(cluster), y = indice_de_gini_2010_municipio)) + 
+  geom_boxplot(fill = "aquamarine4") + 
+  labs(y = "Percentage", x = "Cluster", title = "Gini index",
+       fill = "") + 
+  theme_classic() +
+  theme(plot.title = element_text(size = 7))
+
+e <- ggplot(d_km_clus, aes(x = as.factor(cluster), y = idhm_2010_municipio)) + 
+  geom_boxplot(fill = "aquamarine4") + 
+  labs(y = "Percentage", x = "Cluster", title = "HDI",
+       fill = "") + 
+  theme_classic() +
+  theme(plot.title = element_text(size = 7))
+
+(d+e)
+
+```
+
+
+## fazer arvore de decisão para discriminar os 4 grupos (rpart)
+
+
+```{r}
+d_km_arvore <- d_km_clus |> 
+  mutate_at(c(7:9), ~ . *100)
+
+d_km_arvore <- d_km_arvore |> 
+  rename(Elective = tipopremat_eletivo,
+         Spontaneous = tipopremat_espontaneo,
+         "<6 antenatal visits" = consprenat_menor_que_6_consultas,
+         HDI = idhm_2010_municipio,
+         Gini = indice_de_gini_2010_municipio)
+
+arvore <- rpart::rpart(cluster ~ ., data = d_km_arvore[, c(7:12)])
+
+
+
+# Função para adicionar sufixo "%" apenas para variáveis específicas
+custom_labels <- function(x) {
+  if (x %in% c("Elective", "Spontaneous", "<6 antenatal visits")) {
+    return(paste0(x, " (%)"))  # Adiciona o sufixo apenas para estas variáveis
+  }
+  return(x)
+}
+
+arvore$frame$var <- sapply(arvore$frame$var, custom_labels)
+
+rpart.plot::prp(arvore, fallen.leaves = F, nn = F, extra = 104, box.palette = "auto",varlen = 0,) 
+
+#rpart.plot::rpart.plot(arvore, extra = 5, box.palette = "auto")
+```
+
+
+
+```{r}
+
+
+# taxa por cluster 
+
+
+taxa_cluster <- d_premat |> 
+  # ano de 2020
+  filter(ano == 2020) |> #5.501 observacoes
+  # cnes unico
+  distinct(cnes, .keep_all = TRUE) |> 
+  mutate(
+    cnes = as.character(cnes),
+    vinc_sus = as.factor(vinc_sus)
+  ) |> 
+  dplyr::select(
+    ano, nome_uf, nome_mun, cnes, tipo_cnes, vinc_sus, n_cnes, 
+    tipopremat_espontaneo, tipopremat_eletivo,
+    consprenat_menor_que_6_consultas, 
+    #consprenat_maior_ou_igual_a_6_consultas,
+    indice_de_gini_2010_municipio, 
+    #indice_de_gini_2010_estado 
+    idhm_2010_municipio
+    #idhm_2010_estado
+  ) |> 
+  # covariaveis em percentual
+  #mutate_at(c(7:9), ~(. / n_cnes)) |> 
+  # so respostas validas
+  drop_na() #2.447 observacoes
+
+taxa_cluster <- taxa_cluster |> 
+  bind_cols(cluster = kmed$cluster) |> 
+  mutate_at("cluster", as.factor)
+
+
+
+taxa_cluster_final <- taxa_cluster |> 
+  group_by(cluster) %>%
+  summarize(
+    total_populacao = sum(n_cnes),  # soma da população total do cluster
+    total_espontaneo = sum(tipopremat_espontaneo),  # soma total de casos espontâneos no cluster
+    total_eletivo = sum(tipopremat_eletivo),        # soma total de casos eletivos no cluster
+    taxa_espontaneo = (total_espontaneo / total_populacao),  # taxa de prematuridade espontânea no cluster
+    taxa_eletivo = (total_eletivo / total_populacao)      # taxa de prematuridade eletiva no cluster
+  ) %>%
+  ungroup()
+
+
+
+taxa_ano_final <- taxa_cluster |> 
+  group_by(ano) %>%
+  summarize(
+    total_populacao = sum(n_cnes),  # soma da população total
+    total_espontaneo = sum(tipopremat_espontaneo),  # soma total de casos espontâneos
+    total_eletivo = sum(tipopremat_eletivo),        # soma total de casos eletivos
+    taxa_espontaneo = (total_espontaneo / total_populacao),  # taxa de prematuridade espontânea
+    taxa_eletivo = (total_eletivo / total_populacao),      # taxa de prematuridade eletiva 
+    proporcao = (total_espontaneo / total_eletivo)
+  ) %>%
+  ungroup()
+
+library(openxlsx)
+
+# write.xlsx(taxa_cluster_final, "taxa_cluster_final.xlsx", rowNames = FALSE)
+# write.xlsx(taxa_ano_final, "taxa_ano_final.xlsx", rowNames = FALSE)
+```
+
